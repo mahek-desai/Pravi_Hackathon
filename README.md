@@ -26,7 +26,7 @@ graph TD
     
     UI <-->|API Calls| API[Next.js API Routes]
 
-    subgraph Backend Core (Server Actions / Services)
+    subgraph Backend Core
         API --> Auth[Authentication & RBAC]
         API --> RiskEngine[Risk & Condition Engine]
         API --> AuditService[Audit Logging Service]
