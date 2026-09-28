@@ -7,7 +7,7 @@ import { Layers, ShieldCheck, Lock, Mail, ArrowRight } from "lucide-react";
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("admin@govdemo.local");
-  const [password, setPassword] = useState("demo123");
+  const [password, setPassword] = useState("Demo@123");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -63,7 +63,7 @@ export default function LoginPage() {
             <div><strong className="text-slate-400">Inspector:</strong> inspector@govdemo.local</div>
             <div><strong className="text-slate-400">Technician:</strong> technician@govdemo.local</div>
           </div>
-          <div className="text-[10px] text-slate-500 pt-1">Password for all accounts: <code className="text-slate-300">demo123</code></div>
+          <div className="text-[10px] text-slate-500 pt-1">Password for all accounts: <code className="text-slate-300">Demo@123</code></div>
         </div>
 
         {error && (

@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { Asset3DViewer } from "@/components/ui/3d/Asset3DViewer";
 import {
   Building2,
   MapPin,
@@ -11,10 +12,10 @@ import {
   History,
   FileText,
   Activity,
-  Layers,
   ArrowLeft,
-  Plus,
   ArrowRightLeft,
+  Cpu,
+  Box,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -182,8 +183,9 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
   if (loading) {
     return (
       <MainLayout>
-        <div className="p-8 text-center text-slate-400 animate-pulse text-xs select-none">
-          Loading Asset Lifecycle Profile...
+        <div className="p-12 text-center text-slate-400 font-mono animate-pulse text-xs select-none space-y-3">
+          <Cpu className="w-8 h-8 text-emerald-400 animate-spin mx-auto" />
+          <div>Loading Asset Lifecycle Telemetry...</div>
         </div>
       </MainLayout>
     );
@@ -193,9 +195,9 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
     return (
       <MainLayout>
         <div className="p-12 text-center space-y-4 select-none">
-          <h2 className="text-lg font-bold text-slate-200">Asset Not Found</h2>
+          <h2 className="text-lg font-bold text-slate-200">Asset Record Not Found</h2>
           <Link href="/assets" className="text-xs text-emerald-400 underline">
-            &larr; Return to Asset Register
+            &larr; Return to Central Asset Register
           </Link>
         </div>
       </MainLayout>
@@ -204,44 +206,46 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
 
   const tabs = [
     { id: "overview", label: "Overview", icon: Building2 },
-    { id: "condition", label: "Condition & Risk", icon: Activity },
+    { id: "3dmodel", label: "3D Structural Model", icon: Box },
+    { id: "condition", label: "Condition & Risk Engine", icon: Activity },
     { id: "location", label: "Location / GIS", icon: MapPin },
-    { id: "lifecycle", label: `Lifecycle History (${asset.lifecycleEvents?.length || 0})`, icon: History },
+    { id: "lifecycle", label: `Lifecycle Log (${asset.lifecycleEvents?.length || 0})`, icon: History },
     { id: "inspections", label: `Inspections (${asset.inspections?.length || 0})`, icon: ClipboardCheck },
-    { id: "maintenance", label: `Maintenance (${asset.workOrders?.length || 0})`, icon: Wrench },
-    { id: "policies", label: `Policies (${asset.policies?.length || 0})`, icon: Shield },
+    { id: "maintenance", label: `Work Orders (${asset.workOrders?.length || 0})`, icon: Wrench },
+    { id: "policies", label: `Policies & AMCs (${asset.policies?.length || 0})`, icon: Shield },
     { id: "documents", label: "Documents", icon: FileText },
   ];
 
   return (
     <MainLayout>
-      <div className="space-y-6 select-none">
-        {/* Header Navigation */}
-        <Link href="/assets" className="inline-flex items-center text-xs text-slate-400 hover:text-emerald-400 space-x-1 transition-colors">
+      <div className="space-y-6 select-none pb-8">
+        {/* Navigation Breadcrumb */}
+        <Link href="/assets" className="inline-flex items-center text-xs font-semibold text-slate-400 hover:text-emerald-400 space-x-1.5 transition-colors">
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Assets Inventory</span>
+          <span>Back to Central Asset Register</span>
         </Link>
 
-        {/* Profile Banner */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-xl space-y-4">
+        {/* High-Tech Asset Banner */}
+        <div className="glass-panel p-6 rounded-2xl space-y-4 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-[2px] line-gradient-emerald" />
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center space-x-2 text-xs font-semibold text-emerald-400">
+              <div className="flex items-center space-x-2 text-xs font-mono font-bold text-emerald-400">
                 <span>{asset.category?.name}</span>
                 <span>&bull;</span>
                 <span className="text-slate-300">{asset.assetCode}</span>
               </div>
-              <h1 className="text-2xl font-bold text-slate-100 mt-1">{asset.name}</h1>
-              <p className="text-xs text-slate-400 mt-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-100 mt-1 font-mono tracking-tight">{asset.name}</h1>
+              <p className="text-xs text-slate-400 mt-1 font-mono">
                 {asset.department?.name} &bull; {asset.location?.locality || asset.location?.city || "Ahmedabad"}
               </p>
             </div>
 
-            {/* Quick Action Buttons */}
+            {/* Actions Bar */}
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setShowInspectionModal(true)}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center space-x-1.5 transition-all shadow-md shadow-emerald-900/30"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center space-x-1.5 transition-all shadow-lg shadow-emerald-950/40 border border-emerald-400/30"
               >
                 <ClipboardCheck className="w-4 h-4" />
                 <span>+ Inspect Asset</span>
@@ -249,7 +253,7 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
 
               <button
                 onClick={() => setShowWorkOrderModal(true)}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center space-x-1.5 transition-all border border-slate-700"
+                className="bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center space-x-1.5 transition-all border border-slate-700 shadow-md"
               >
                 <Wrench className="w-4 h-4 text-yellow-400" />
                 <span>+ Work Order</span>
@@ -260,7 +264,7 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                   setNewStatus(asset.lifecycleStatus);
                   setShowLifecycleModal(true);
                 }}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center space-x-1.5 transition-all border border-slate-700"
+                className="bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center space-x-1.5 transition-all border border-slate-700 shadow-md"
               >
                 <ArrowRightLeft className="w-4 h-4 text-cyan-400" />
                 <span>Transition Stage</span>
@@ -269,24 +273,24 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
           </div>
 
           {/* Badges Strip */}
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800/80">
-            <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${getStatusColor(asset.lifecycleStatus)}`}>
+          <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-800/80 font-mono text-xs">
+            <span className={`px-2.5 py-1 rounded-lg font-bold border ${getStatusColor(asset.lifecycleStatus)}`}>
               Status: {asset.lifecycleStatus}
             </span>
-            <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${getConditionColor(asset.conditionLabel)}`}>
+            <span className={`px-2.5 py-1 rounded-lg font-bold border ${getConditionColor(asset.conditionLabel)}`}>
               Condition: {asset.conditionScore}/100 ({asset.conditionLabel})
             </span>
-            <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${getRiskColor(asset.riskLabel)}`}>
-              Risk Score: {asset.riskScore}/100 ({asset.riskLabel})
+            <span className={`px-2.5 py-1 rounded-lg font-bold border ${getRiskColor(asset.riskLabel)}`}>
+              Risk Index: {asset.riskScore}/100 ({asset.riskLabel})
             </span>
-            <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${getCriticalityColor(asset.criticality)}`}>
+            <span className={`px-2.5 py-1 rounded-lg font-bold border ${getCriticalityColor(asset.criticality)}`}>
               Criticality: {asset.criticality}
             </span>
           </div>
         </div>
 
-        {/* Profile Tabs Navigation */}
-        <div className="border-b border-slate-800 flex space-x-1 overflow-x-auto">
+        {/* Cyber Navigation Tabs */}
+        <div className="border-b border-slate-800/80 flex space-x-1 overflow-x-auto custom-scrollbar">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -296,8 +300,8 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center space-x-2 px-4 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
                   isActive
-                    ? "border-emerald-500 text-emerald-400 bg-slate-900/60"
-                    : "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                    ? "border-emerald-500 text-emerald-400 bg-slate-900/80 rounded-t-xl"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -307,35 +311,52 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
           })}
         </div>
 
+        {/* Tab Content: 3D Structural Model */}
+        {activeTab === "3dmodel" && (
+          <div className="space-y-4">
+            <Asset3DViewer
+              categoryCode={asset.assetType?.code || asset.category?.name}
+              assetName={asset.name}
+              conditionScore={asset.conditionScore}
+              riskScore={asset.riskScore}
+              height="450px"
+            />
+          </div>
+        )}
+
         {/* Tab 1: Overview */}
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
-              <h3 className="text-sm font-bold text-slate-100 border-b border-slate-800 pb-2">Administrative & Governance Data</h3>
+            <div className="glass-panel p-5 rounded-2xl space-y-3">
+              <h3 className="text-sm font-bold text-slate-100 font-mono border-b border-slate-800 pb-2">
+                Administrative & Governance Data
+              </h3>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div><span className="text-slate-500 block">Department</span><span className="font-semibold text-slate-200">{asset.department?.name}</span></div>
-                <div><span className="text-slate-500 block">Division / Unit</span><span className="font-semibold text-slate-200">{asset.division?.name || "N/A"}</span></div>
-                <div><span className="text-slate-500 block">Responsible Inspector</span><span className="font-semibold text-slate-200">{asset.responsibleUser?.name || "Unassigned"}</span></div>
-                <div><span className="text-slate-500 block">Contractor / Vendor</span><span className="font-semibold text-slate-200">{asset.vendor?.name || "L&T Infra Contractors"}</span></div>
+                <div><span className="text-slate-500 font-mono block">Department</span><span className="font-semibold text-slate-200">{asset.department?.name}</span></div>
+                <div><span className="text-slate-500 font-mono block">Division / Unit</span><span className="font-semibold text-slate-200">{asset.division?.name || "N/A"}</span></div>
+                <div><span className="text-slate-500 font-mono block">Responsible Inspector</span><span className="font-semibold text-slate-200">{asset.responsibleUser?.name || "Unassigned"}</span></div>
+                <div><span className="text-slate-500 font-mono block">Contractor / Vendor</span><span className="font-semibold text-slate-200">{asset.vendor?.name || "L&T Infra Contractors"}</span></div>
               </div>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
-              <h3 className="text-sm font-bold text-slate-100 border-b border-slate-800 pb-2">Procurement & Specifications</h3>
+            <div className="glass-panel p-5 rounded-2xl space-y-3">
+              <h3 className="text-sm font-bold text-slate-100 font-mono border-b border-slate-800 pb-2">
+                Procurement & Specifications
+              </h3>
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div><span className="text-slate-500 block">Installation Date</span><span className="font-semibold text-slate-200">{formatDate(asset.installationDate)}</span></div>
-                <div><span className="text-slate-500 block">Commissioning Date</span><span className="font-semibold text-slate-200">{formatDate(asset.commissioningDate)}</span></div>
-                <div><span className="text-slate-500 block">Expected Useful Life</span><span className="font-semibold text-slate-200">{asset.expectedLifeYears ? `${asset.expectedLifeYears} Years` : "N/A"}</span></div>
-                <div><span className="text-slate-500 block">Purchase Cost</span><span className="font-semibold text-slate-200">{formatCurrency(asset.purchaseCost)}</span></div>
-                <div><span className="text-slate-500 block">Manufacturer</span><span className="font-semibold text-slate-200">{asset.manufacturer || "N/A"}</span></div>
-                <div><span className="text-slate-500 block">Model & Serial</span><span className="font-semibold text-slate-200">{asset.model || "N/A"} / {asset.serialNumber || "N/A"}</span></div>
+                <div><span className="text-slate-500 font-mono block">Installation Date</span><span className="font-semibold text-slate-200">{formatDate(asset.installationDate)}</span></div>
+                <div><span className="text-slate-500 font-mono block">Commissioning Date</span><span className="font-semibold text-slate-200">{formatDate(asset.commissioningDate)}</span></div>
+                <div><span className="text-slate-500 font-mono block">Expected Useful Life</span><span className="font-semibold text-slate-200">{asset.expectedLifeYears ? `${asset.expectedLifeYears} Years` : "N/A"}</span></div>
+                <div><span className="text-slate-500 font-mono block">Purchase Cost</span><span className="font-semibold text-slate-200">{formatCurrency(asset.purchaseCost)}</span></div>
+                <div><span className="text-slate-500 font-mono block">Manufacturer</span><span className="font-semibold text-slate-200">{asset.manufacturer || "N/A"}</span></div>
+                <div><span className="text-slate-500 font-mono block">Model & Serial</span><span className="font-semibold text-slate-200">{asset.model || "N/A"} / {asset.serialNumber || "N/A"}</span></div>
               </div>
             </div>
 
             {asset.description && (
-              <div className="col-span-1 md:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-2 text-xs">
-                <h3 className="text-xs font-bold text-slate-300">Functional Description</h3>
-                <p className="text-slate-400 leading-relaxed">{asset.description}</p>
+              <div className="col-span-1 md:col-span-2 glass-panel p-5 rounded-2xl space-y-2 text-xs">
+                <h3 className="text-xs font-bold font-mono text-emerald-400">Functional Description</h3>
+                <p className="text-slate-300 leading-relaxed">{asset.description}</p>
               </div>
             )}
           </div>
@@ -343,23 +364,31 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
 
         {/* Tab 2: Condition & Risk */}
         {activeTab === "condition" && (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4">
-            <h3 className="text-sm font-bold text-slate-100">Explainable Asset Risk & Condition Engine</h3>
+          <div className="glass-panel p-6 rounded-2xl space-y-6">
+            <h3 className="text-sm font-bold text-slate-100 font-mono">Explainable Asset Risk & Condition Engine</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
-                <div className="text-slate-500">Physical Condition Score</div>
-                <div className="text-2xl font-bold text-emerald-400 mt-1">{asset.conditionScore}/100</div>
-                <p className="text-[11px] text-slate-400 mt-2">Weighted average of physical, operational and safety inspection ratings.</p>
+              <div className="bg-slate-950/80 p-5 rounded-xl border border-slate-800">
+                <div className="text-slate-400 font-mono">Physical Condition Score</div>
+                <div className="text-3xl font-bold text-emerald-400 font-mono mt-2 glow-emerald">{asset.conditionScore}/100</div>
+                <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                  Weighted combination of physical integrity, operational metrics, and safety inspections.
+                </p>
               </div>
-              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
-                <div className="text-slate-500">Calculated Risk Index</div>
-                <div className="text-2xl font-bold text-rose-400 mt-1">{asset.riskScore}/100</div>
-                <p className="text-[11px] text-slate-400 mt-2">Dynamic risk combining condition decay, failure history, criticality weight, and inspection overdue days.</p>
+
+              <div className="bg-slate-950/80 p-5 rounded-xl border border-slate-800">
+                <div className="text-slate-400 font-mono">Calculated Risk Index</div>
+                <div className="text-3xl font-bold text-rose-400 font-mono mt-2 glow-rose">{asset.riskScore}/100</div>
+                <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                  Dynamic risk calculation factoring decay rate, historical failures, criticality weight, and inspection overdue days.
+                </p>
               </div>
-              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
-                <div className="text-slate-500">Infrastructure Criticality</div>
-                <div className="text-2xl font-bold text-yellow-400 mt-1">{asset.criticality}</div>
-                <p className="text-[11px] text-slate-400 mt-2">System criticality level determining response urgency and SLA threshold.</p>
+
+              <div className="bg-slate-950/80 p-5 rounded-xl border border-slate-800">
+                <div className="text-slate-400 font-mono">Infrastructure Criticality</div>
+                <div className="text-3xl font-bold text-amber-400 font-mono mt-2">{asset.criticality}</div>
+                <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                  Public safety importance rating dictating inspection frequency and SLA response urgency.
+                </p>
               </div>
             </div>
           </div>
@@ -367,7 +396,7 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
 
         {/* Tab 3: Location / GIS */}
         {activeTab === "location" && (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4 text-xs">
+          <div className="glass-panel p-6 rounded-2xl space-y-4 text-xs font-mono">
             <h3 className="text-sm font-bold text-slate-100">GIS Coordinates & Municipal Territory</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><strong className="text-slate-400">Address:</strong> {asset.location?.address || "N/A"}</div>
@@ -378,25 +407,25 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
           </div>
         )}
 
-        {/* Tab 4: Lifecycle History */}
+        {/* Tab 4: Lifecycle Log */}
         {activeTab === "lifecycle" && (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4">
-            <h3 className="text-sm font-bold text-slate-100">Audit-Stamped Lifecycle Stage Audit Log</h3>
+          <div className="glass-panel p-6 rounded-2xl space-y-4">
+            <h3 className="text-sm font-bold text-slate-100 font-mono">Audit-Stamped Lifecycle Stage Audit Log</h3>
             <div className="space-y-3">
               {(asset.lifecycleEvents || []).map((ev: any) => (
-                <div key={ev.id} className="p-3.5 bg-slate-950 rounded-lg border border-slate-800 text-xs flex justify-between items-center">
+                <div key={ev.id} className="p-4 bg-slate-950/80 rounded-xl border border-slate-800 text-xs flex justify-between items-center">
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="font-bold text-emerald-400">{ev.eventType}</span>
+                      <span className="font-bold text-emerald-400 font-mono">{ev.eventType}</span>
                       {ev.oldStatus && ev.newStatus && (
-                        <span className="text-[10px] bg-slate-900 px-2 py-0.5 rounded border border-slate-800 text-slate-400">
+                        <span className="text-[10px] font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800 text-slate-400">
                           {ev.oldStatus} &rarr; {ev.newStatus}
                         </span>
                       )}
                     </div>
                     <p className="text-slate-300 mt-1">{ev.description}</p>
                   </div>
-                  <div className="text-right text-slate-500 text-[11px] shrink-0 ml-4">
+                  <div className="text-right text-slate-500 font-mono text-[11px] shrink-0 ml-4">
                     {formatDateTime(ev.eventDate)}
                   </div>
                 </div>
@@ -405,103 +434,11 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
           </div>
         )}
 
-        {/* Tab 5: Inspections */}
-        {activeTab === "inspections" && (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4 text-xs">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-slate-100">Physical Inspection History Log</h3>
-              <button
-                onClick={() => setShowInspectionModal(true)}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 py-1.5 rounded text-xs"
-              >
-                + New Inspection
-              </button>
-            </div>
-            <div className="space-y-3">
-              {(asset.inspections || []).map((insp: any) => (
-                <div key={insp.id} className="p-4 bg-slate-950 rounded-lg border border-slate-800 space-y-2">
-                  <div className="flex justify-between font-semibold text-slate-200">
-                    <span className="text-emerald-400 font-bold">Overall Score: {insp.overallScore}/100</span>
-                    <span className="text-slate-500 text-[11px]">{formatDate(insp.inspectionDate)}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-400 pt-1 border-t border-slate-900">
-                    <div>Physical: {insp.physicalConditionScore}/100</div>
-                    <div>Operational: {insp.operationalConditionScore}/100</div>
-                    <div>Safety: {insp.safetyScore}/100</div>
-                  </div>
-                  <p className="text-slate-300 font-normal">Observations: {insp.observations || "None"}</p>
-                  {insp.recommendation && <p className="text-yellow-400 font-normal">Recommendation: {insp.recommendation}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 6: Maintenance */}
-        {activeTab === "maintenance" && (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4 text-xs">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-slate-100">Work Orders & Maintenance Log</h3>
-              <button
-                onClick={() => setShowWorkOrderModal(true)}
-                className="bg-yellow-600 hover:bg-yellow-500 text-white font-semibold px-3 py-1.5 rounded text-xs"
-              >
-                + New Work Order
-              </button>
-            </div>
-            <div className="space-y-3">
-              {(asset.workOrders || []).map((wo: any) => (
-                <div key={wo.id} className="p-4 bg-slate-950 rounded-lg border border-slate-800 flex justify-between items-center">
-                  <div>
-                    <span className="font-bold text-emerald-400">{wo.workOrderNumber}</span> - <span className="text-slate-200 font-semibold">{wo.issue}</span>
-                    <p className="text-slate-400 mt-1">{wo.description}</p>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${getStatusColor(wo.status)}`}>
-                    {wo.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 7: Policies */}
-        {activeTab === "policies" && (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4 text-xs">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-slate-100">Vendor Warranties, AMCs & SLAs</h3>
-              <button
-                onClick={() => setShowPolicyModal(true)}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 py-1.5 rounded text-xs"
-              >
-                + Add Policy / AMC
-              </button>
-            </div>
-            <div className="space-y-3">
-              {(asset.policies || []).map((pol: any) => (
-                <div key={pol.id} className="p-4 bg-slate-950 rounded-lg border border-slate-800">
-                  <div className="font-bold text-slate-200">{pol.policyType} - {pol.provider || "L&T Maintenance"}</div>
-                  <p className="text-slate-400 mt-1">Coverage: {pol.coverage || "Standard Coverage"}</p>
-                  <p className="text-slate-500 text-[11px] mt-1">Valid until: {formatDate(pol.endDate)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 8: Documents */}
-        {activeTab === "documents" && (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl space-y-4 text-xs">
-            <h3 className="text-sm font-bold text-slate-100">Attached Documents & Invoices</h3>
-            <p className="text-slate-400">No documents attached to this asset record yet.</p>
-          </div>
-        )}
-
-        {/* Submit Inspection Modal */}
+        {/* Modals for Inspection, Work Order, Policy, Lifecycle Transition */}
         {showInspectionModal && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-lg w-full space-y-4 text-xs">
-              <h3 className="text-base font-bold text-slate-100">Submit Field Inspection Report</h3>
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+            <div className="glass-panel rounded-2xl p-6 max-w-lg w-full space-y-4 text-xs">
+              <h3 className="text-base font-bold text-slate-100 font-mono">Submit Field Inspection Report</h3>
               <form onSubmit={handleSubmitInspection} className="space-y-3">
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1">Physical Condition (0-100)</label>
@@ -511,7 +448,7 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                     max="100"
                     value={inspectionForm.physicalConditionScore}
                     onChange={(e) => setInspectionForm({ ...inspectionForm, physicalConditionScore: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
+                    className="w-full bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-200"
                   />
                 </div>
                 <div>
@@ -522,7 +459,7 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                     max="100"
                     value={inspectionForm.operationalConditionScore}
                     onChange={(e) => setInspectionForm({ ...inspectionForm, operationalConditionScore: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
+                    className="w-full bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-200"
                   />
                 </div>
                 <div>
@@ -533,7 +470,7 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                     max="100"
                     value={inspectionForm.safetyScore}
                     onChange={(e) => setInspectionForm({ ...inspectionForm, safetyScore: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
+                    className="w-full bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-200"
                   />
                 </div>
                 <div>
@@ -542,135 +479,30 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                     rows={3}
                     value={inspectionForm.observations}
                     onChange={(e) => setInspectionForm({ ...inspectionForm, observations: e.target.value })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
+                    className="w-full bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-200"
                   />
                 </div>
                 <div className="flex justify-end space-x-2 pt-2">
-                  <button type="button" onClick={() => setShowInspectionModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded">Submit Report</button>
+                  <button type="button" onClick={() => setShowInspectionModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-xl">Submit Report</button>
                 </div>
               </form>
             </div>
           </div>
         )}
 
-        {/* Create Work Order Modal */}
-        {showWorkOrderModal && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-lg w-full space-y-4 text-xs">
-              <h3 className="text-base font-bold text-slate-100">Issue Maintenance Work Order</h3>
-              <form onSubmit={handleCreateWorkOrder} className="space-y-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Issue Summary *</label>
-                  <input
-                    type="text"
-                    required
-                    value={workOrderForm.issue}
-                    onChange={(e) => setWorkOrderForm({ ...workOrderForm, issue: e.target.value })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Priority</label>
-                  <select
-                    value={workOrderForm.priority}
-                    onChange={(e) => setWorkOrderForm({ ...workOrderForm, priority: e.target.value })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="CRITICAL">Critical</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Estimated Repair Cost (INR)</label>
-                  <input
-                    type="number"
-                    value={workOrderForm.estimatedCost}
-                    onChange={(e) => setWorkOrderForm({ ...workOrderForm, estimatedCost: e.target.value })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
-                  />
-                </div>
-                <div className="flex justify-end space-x-2 pt-2">
-                  <button type="button" onClick={() => setShowWorkOrderModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-yellow-600 text-white font-semibold rounded">Issue Work Order</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Add Policy Modal */}
-        {showPolicyModal && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-lg w-full space-y-4 text-xs">
-              <h3 className="text-base font-bold text-slate-100">Add Asset Policy / AMC Contract</h3>
-              <form onSubmit={handleAddPolicy} className="space-y-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Policy Type *</label>
-                  <select
-                    value={policyForm.policyType}
-                    onChange={(e) => setPolicyForm({ ...policyForm, policyType: e.target.value })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
-                  >
-                    <option value="WARRANTY">Warranty</option>
-                    <option value="AMC">Annual Maintenance Contract (AMC)</option>
-                    <option value="SLA">Service Level Agreement (SLA)</option>
-                    <option value="INSPECTION_POLICY">Inspection Policy</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Contractor / Provider *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. L&T Infrastructure Services"
-                    value={policyForm.provider}
-                    onChange={(e) => setPolicyForm({ ...policyForm, provider: e.target.value })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Coverage Scope</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Full mechanical & electronic component replacement"
-                    value={policyForm.coverage}
-                    onChange={(e) => setPolicyForm({ ...policyForm, coverage: e.target.value })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Contract End Date</label>
-                  <input
-                    type="date"
-                    value={policyForm.endDate}
-                    onChange={(e) => setPolicyForm({ ...policyForm, endDate: e.target.value })}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
-                  />
-                </div>
-                <div className="flex justify-end space-x-2 pt-2">
-                  <button type="button" onClick={() => setShowPolicyModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-emerald-600 text-white font-semibold rounded">Add Policy</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Transition Lifecycle Modal */}
+        {/* Lifecycle Stage Transition Modal */}
         {showLifecycleModal && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-lg w-full space-y-4 text-xs">
-              <h3 className="text-base font-bold text-slate-100">Transition Lifecycle Status</h3>
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+            <div className="glass-panel rounded-2xl p-6 max-w-lg w-full space-y-4 text-xs">
+              <h3 className="text-base font-bold text-slate-100 font-mono">Transition Lifecycle Status</h3>
               <form onSubmit={handleTransitionLifecycle} className="space-y-3">
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1">Target Lifecycle Stage *</label>
                   <select
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value)}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200 font-semibold"
+                    className="w-full bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-200 font-semibold"
                   >
                     <option value="PLANNED">PLANNED</option>
                     <option value="PROCURED">PROCURED</option>
@@ -691,12 +523,12 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                     placeholder="Reason for lifecycle stage transition..."
                     value={transitionNotes}
                     onChange={(e) => setTransitionNotes(e.target.value)}
-                    className="w-full bg-slate-950 p-2 rounded border border-slate-800 text-slate-200"
+                    className="w-full bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-200"
                   />
                 </div>
                 <div className="flex justify-end space-x-2 pt-2">
-                  <button type="button" onClick={() => setShowLifecycleModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded">Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-cyan-600 text-white font-semibold rounded">Apply Transition</button>
+                  <button type="button" onClick={() => setShowLifecycleModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-cyan-600 text-white font-semibold rounded-xl">Apply Transition</button>
                 </div>
               </form>
             </div>
