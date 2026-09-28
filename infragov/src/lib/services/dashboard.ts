@@ -16,6 +16,8 @@ export async function getDashboardStats(departmentId?: string) {
     conditionStats,
     riskStats,
     departmentStats,
+    priorityActionQueue,
+    recentActivities,
   ] = await Promise.all([
     prisma.asset.count({ where }),
     prisma.asset.count({ where: { ...where, lifecycleStatus: "OPERATIONAL" } }),
@@ -43,6 +45,37 @@ export async function getDashboardStats(departmentId?: string) {
       include: {
         _count: { select: { assets: true } },
       },
+    }),
+    // Priority Action Queue: High/Critical alerts with asset info
+    prisma.alert.findMany({
+      where: { status: "OPEN" },
+      include: {
+        asset: {
+          select: {
+            id: true,
+            assetCode: true,
+            name: true,
+            conditionScore: true,
+            riskScore: true,
+            riskLabel: true,
+            location: { select: { locality: true, zone: true } },
+          },
+        },
+      },
+      orderBy: [
+        { severity: "desc" },
+        { createdAt: "desc" },
+      ],
+      take: 6,
+    }),
+    // Recent operational activities (lifecycle events)
+    prisma.lifecycleEvent.findMany({
+      include: {
+        asset: { select: { id: true, name: true, assetCode: true } },
+        performedBy: { select: { name: true } },
+      },
+      orderBy: { eventDate: "desc" },
+      take: 5,
     }),
   ]);
 
@@ -74,5 +107,7 @@ export async function getDashboardStats(departmentId?: string) {
       code: d.code,
       count: d._count.assets,
     })),
+    priorityActionQueue,
+    recentActivities,
   };
 }

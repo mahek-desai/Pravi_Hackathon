@@ -12,6 +12,13 @@ export function AssetCreationWizard() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Dynamic template schema state
+  const [templateFields, setTemplateFields] = useState<any[]>([
+    { name: "spec_standard", label: "Specification Standard", type: "text", placeholder: "IS / ISO Code" },
+    { name: "installed_capacity", label: "Installed Capacity / Rating", type: "text", placeholder: "e.g. 500 kVA / 100 KL" },
+    { name: "material_grade", label: "Material Grade", type: "text", placeholder: "e.g. Fe500 / HD-Polymer" },
+  ]);
+
   // Form State
   const [formData, setFormData] = useState({
     categoryId: "",
@@ -21,6 +28,7 @@ export function AssetCreationWizard() {
     divisionId: "",
     criticality: "MEDIUM",
     operationalStatus: "ACTIVE",
+    lifecycleStatus: "PLANNED",
     description: "",
     manufacturer: "",
     model: "",
@@ -33,6 +41,7 @@ export function AssetCreationWizard() {
       address: "",
       city: "Ahmedabad",
       state: "Gujarat",
+      district: "Ahmedabad",
       zone: "West Zone",
       ward: "Ward 12",
       locality: "",
@@ -66,9 +75,34 @@ export function AssetCreationWizard() {
   const selectedDepartment = departments.find((d) => d.id === formData.departmentId);
   const availableDivisions = selectedDepartment?.divisions || [];
 
+  const handleSelectAssetType = (typeId: string) => {
+    setFormData({ ...formData, assetTypeId: typeId });
+    const selectedType = availableAssetTypes.find((t: any) => t.id === typeId);
+    if (selectedType?.templates && selectedType.templates[0]?.schemaJson) {
+      try {
+        const parsed = JSON.parse(selectedType.templates[0].schemaJson);
+        if (parsed.fields && Array.isArray(parsed.fields)) {
+          setTemplateFields(parsed.fields);
+        }
+      } catch (e) {
+        // Fallback default fields
+      }
+    }
+  };
+
   const handleCreate = async () => {
     setSubmitting(true);
     try {
+      const policiesPayload = [];
+      if (formData.policy.provider || formData.policy.coverage || formData.policy.endDate) {
+        policiesPayload.push({
+          policyType: formData.policy.policyType,
+          provider: formData.policy.provider,
+          coverage: formData.policy.coverage,
+          endDate: formData.policy.endDate,
+        });
+      }
+
       const payload = {
         name: formData.name,
         categoryId: formData.categoryId,
@@ -77,6 +111,7 @@ export function AssetCreationWizard() {
         divisionId: formData.divisionId || undefined,
         criticality: formData.criticality,
         operationalStatus: formData.operationalStatus,
+        lifecycleStatus: formData.lifecycleStatus,
         description: formData.description || undefined,
         manufacturer: formData.manufacturer || undefined,
         model: formData.model || undefined,
@@ -87,6 +122,7 @@ export function AssetCreationWizard() {
         commissioningDate: formData.commissioningDate || undefined,
         technicalMetadataJson: JSON.stringify(formData.technicalMetadata),
         location: formData.location,
+        policies: policiesPayload,
       };
 
       const res = await fetch("/api/assets", {
@@ -119,7 +155,7 @@ export function AssetCreationWizard() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 select-none">
       {/* Stepper Progress Header */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
         <div className="flex items-center justify-between">
@@ -195,7 +231,7 @@ export function AssetCreationWizard() {
               {availableAssetTypes.map((t: any) => (
                 <div
                   key={t.id}
-                  onClick={() => setFormData({ ...formData, assetTypeId: t.id })}
+                  onClick={() => handleSelectAssetType(t.id)}
                   className={`p-4 rounded-xl border cursor-pointer transition-all ${
                     formData.assetTypeId === t.id
                       ? "bg-emerald-950/40 border-emerald-500/60 shadow-lg shadow-emerald-900/20"
@@ -214,8 +250,8 @@ export function AssetCreationWizard() {
         {step === 3 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-100">Step 3: Basic Information</h2>
-              <p className="text-xs text-slate-400">Provide core identifying parameters and ownership details.</p>
+              <h2 className="text-lg font-bold text-slate-100">Step 3: Basic Information & Ownership</h2>
+              <p className="text-xs text-slate-400">Provide core identifying parameters, ownership, and initial lifecycle stage.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="col-span-2">
@@ -258,6 +294,21 @@ export function AssetCreationWizard() {
               </div>
 
               <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Initial Lifecycle Stage</label>
+                <select
+                  value={formData.lifecycleStatus}
+                  onChange={(e) => setFormData({ ...formData, lifecycleStatus: e.target.value })}
+                  className="w-full bg-slate-950 text-sm text-slate-200 rounded-lg p-2.5 border border-slate-800 focus:border-emerald-500 focus:outline-none"
+                >
+                  <option value="PLANNED">PLANNED</option>
+                  <option value="PROCURED">PROCURED</option>
+                  <option value="INSTALLED">INSTALLED</option>
+                  <option value="COMMISSIONED">COMMISSIONED</option>
+                  <option value="OPERATIONAL">OPERATIONAL</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Criticality Level</label>
                 <select
                   value={formData.criticality}
@@ -282,7 +333,7 @@ export function AssetCreationWizard() {
               </div>
 
               <div className="col-span-2">
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Description</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Functional Description</label>
                 <textarea
                   rows={3}
                   value={formData.description}
@@ -299,7 +350,7 @@ export function AssetCreationWizard() {
         {step === 4 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-100">Step 4: Location & Spatial Data</h2>
+              <h2 className="text-lg font-bold text-slate-100">Step 4: GIS Location & Coordinates</h2>
               <p className="text-xs text-slate-400">Specify exact GIS coordinates and municipal ward/zone boundary.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -314,7 +365,7 @@ export function AssetCreationWizard() {
                       location: { ...formData.location, address: e.target.value },
                     })
                   }
-                  placeholder="e.g. Near SG Highway Flyover, Bodakdev"
+                  placeholder="e.g. Near CG Road Junction, Navrangpura"
                   className="w-full bg-slate-950 text-sm text-slate-200 rounded-lg p-2.5 border border-slate-800 focus:border-emerald-500 focus:outline-none"
                 />
               </div>
@@ -384,12 +435,12 @@ export function AssetCreationWizard() {
           </div>
         )}
 
-        {/* Step 5: Technical Details */}
+        {/* Step 5: Technical Details & Dynamic Schema */}
         {step === 5 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-100">Step 5: Technical & Procurement Data</h2>
-              <p className="text-xs text-slate-400">Optional technical specifications and vendor details.</p>
+              <h2 className="text-lg font-bold text-slate-100">Step 5: Technical Specifications & Dynamic Attributes</h2>
+              <p className="text-xs text-slate-400">Specify technical parameters dynamically mapped from the Asset Type Template Schema.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -398,7 +449,7 @@ export function AssetCreationWizard() {
                   type="text"
                   value={formData.manufacturer}
                   onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-                  placeholder="e.g. Siemens / L&T"
+                  placeholder="e.g. Siemens / L&T Infra Works"
                   className="w-full bg-slate-950 text-sm text-slate-200 rounded-lg p-2.5 border border-slate-800 focus:border-emerald-500 focus:outline-none"
                 />
               </div>
@@ -433,6 +484,33 @@ export function AssetCreationWizard() {
                   className="w-full bg-slate-950 text-sm text-slate-200 rounded-lg p-2.5 border border-slate-800 focus:border-emerald-500 focus:outline-none"
                 />
               </div>
+
+              {/* Dynamic Template Schema Fields */}
+              <div className="col-span-2 pt-2 border-t border-slate-800">
+                <h4 className="text-xs font-bold text-emerald-400 mb-3">Dynamic Technical Attributes ({templateFields.length})</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {templateFields.map((tf) => (
+                    <div key={tf.name}>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">{tf.label}</label>
+                      <input
+                        type={tf.type === "number" ? "number" : "text"}
+                        value={formData.technicalMetadata[tf.name] || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            technicalMetadata: {
+                              ...formData.technicalMetadata,
+                              [tf.name]: e.target.value,
+                            },
+                          })
+                        }
+                        placeholder={tf.placeholder || `Enter ${tf.label}`}
+                        className="w-full bg-slate-950 text-sm text-slate-200 rounded-lg p-2.5 border border-slate-800 focus:border-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -441,8 +519,8 @@ export function AssetCreationWizard() {
         {step === 6 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-100">Step 6: Warranty & AMC Coverage</h2>
-              <p className="text-xs text-slate-400">Configure initial warranty or annual maintenance contract.</p>
+              <h2 className="text-lg font-bold text-slate-100">Step 6: Initial Policy / Warranty / AMC Coverage</h2>
+              <p className="text-xs text-slate-400">Optionally configure initial vendor warranty or annual maintenance contract.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -464,7 +542,7 @@ export function AssetCreationWizard() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Contract Provider / Vendor</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Vendor / Provider Name</label>
                 <input
                   type="text"
                   value={formData.policy.provider}
@@ -474,7 +552,38 @@ export function AssetCreationWizard() {
                       policy: { ...formData.policy, provider: e.target.value },
                     })
                   }
-                  placeholder="e.g. L&T Maintenance Ltd"
+                  placeholder="e.g. L&T Infrastructure Services"
+                  className="w-full bg-slate-950 text-sm text-slate-200 rounded-lg p-2.5 border border-slate-800 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Coverage Details</label>
+                <input
+                  type="text"
+                  value={formData.policy.coverage}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      policy: { ...formData.policy, coverage: e.target.value },
+                    })
+                  }
+                  placeholder="e.g. Comprehensive 24/7 SLA"
+                  className="w-full bg-slate-950 text-sm text-slate-200 rounded-lg p-2.5 border border-slate-800 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Contract End Date</label>
+                <input
+                  type="date"
+                  value={formData.policy.endDate}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      policy: { ...formData.policy, endDate: e.target.value },
+                    })
+                  }
                   className="w-full bg-slate-950 text-sm text-slate-200 rounded-lg p-2.5 border border-slate-800 focus:border-emerald-500 focus:outline-none"
                 />
               </div>
@@ -490,9 +599,10 @@ export function AssetCreationWizard() {
               <p className="text-xs text-slate-400">Review all details before commissioning into database.</p>
             </div>
             <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
-              <div><strong className="text-slate-400">Name:</strong> {formData.name}</div>
+              <div><strong className="text-slate-400">Asset Name:</strong> {formData.name}</div>
               <div><strong className="text-slate-400">Category:</strong> {selectedCategory?.name}</div>
               <div><strong className="text-slate-400">Department:</strong> {selectedDepartment?.name}</div>
+              <div><strong className="text-slate-400">Initial Stage:</strong> {formData.lifecycleStatus}</div>
               <div><strong className="text-slate-400">Criticality:</strong> {formData.criticality}</div>
               <div><strong className="text-slate-400">Address:</strong> {formData.location.address}, {formData.location.zone}</div>
               <div><strong className="text-slate-400">Coordinates:</strong> {formData.location.latitude}, {formData.location.longitude}</div>

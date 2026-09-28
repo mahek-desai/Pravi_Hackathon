@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import { destroySession, getSession } from "@/lib/auth";
-
-export async function POST() {
-  await destroySession();
-  return NextResponse.json({ success: true, message: "Logged out successfully" });
-}
+import { getSession } from "@/lib/auth";
 
 export async function GET() {
   const session = await getSession();

@@ -1,6 +1,8 @@
 import { prisma } from "../db";
-import { calculateRiskScore, getConditionLabel } from "../utils";
+import { getConditionLabel } from "../utils";
 import { createAuditLog } from "../audit";
+import { recalculateAndUpdateRisk } from "./risk";
+import { evaluateAlerts } from "./alert";
 
 export async function submitInspection(data: {
   assetId: string;
@@ -25,7 +27,6 @@ export async function submitInspection(data: {
   );
 
   const conditionLabel = getConditionLabel(overallScore);
-  const { score: riskScore, label: riskLabel } = calculateRiskScore(overallScore, asset.criticality);
 
   // 1. Create inspection record
   const inspection = await prisma.inspection.create({
@@ -42,19 +43,25 @@ export async function submitInspection(data: {
     },
   });
 
-  // 2. Update asset condition & risk score
-  const updatedAsset = await prisma.asset.update({
+  // 2. Update asset condition score and label
+  const newLifecycle = overallScore < 40 && asset.lifecycleStatus === "OPERATIONAL" 
+    ? "UNDER_MAINTENANCE" 
+    : asset.lifecycleStatus;
+
+  await prisma.asset.update({
     where: { id: data.assetId },
     data: {
       conditionScore: overallScore,
       conditionLabel,
-      riskScore,
-      riskLabel,
-      lifecycleStatus: overallScore < 40 ? "UNDER_MAINTENANCE" : asset.lifecycleStatus,
+      lifecycleStatus: newLifecycle,
+      operationalStatus: overallScore < 40 ? "DEGRADED" : asset.operationalStatus,
     },
   });
 
-  // 3. Create lifecycle event
+  // 3. Recalculate risk using full engine (failure history + overdue + condition + criticality)
+  const { score: riskScore, label: riskLabel } = await recalculateAndUpdateRisk(data.assetId);
+
+  // 4. Create lifecycle event
   await prisma.lifecycleEvent.create({
     data: {
       assetId: data.assetId,
@@ -67,21 +74,10 @@ export async function submitInspection(data: {
     },
   });
 
-  // 4. Create Alert if score drops low or risk is critical
-  if (overallScore < 40 || riskScore > 75) {
-    await prisma.alert.create({
-      data: {
-        assetId: data.assetId,
-        alertType: overallScore < 40 ? "POOR_CONDITION" : "CRITICAL_RISK",
-        severity: riskScore > 80 ? "CRITICAL" : "HIGH",
-        title: `Low Condition Alert: ${asset.name}`,
-        description: `Condition score updated to ${overallScore}/100. Recommendation: ${data.recommendation || "Needs inspection & work order."}`,
-        status: "OPEN",
-      },
-    });
-  }
+  // 5. Evaluate and trigger alerts with deduplication
+  await evaluateAlerts(data.assetId);
 
-  // 5. Audit log
+  // 6. Audit log
   await createAuditLog({
     entityType: "INSPECTION",
     entityId: inspection.id,
@@ -90,6 +86,10 @@ export async function submitInspection(data: {
     oldValues: { conditionScore: asset.conditionScore, riskScore: asset.riskScore },
     newValues: { conditionScore: overallScore, riskScore },
     reason: "Submitted field condition assessment",
+  });
+
+  const updatedAsset = await prisma.asset.findUnique({
+    where: { id: data.assetId },
   });
 
   return { inspection, updatedAsset };

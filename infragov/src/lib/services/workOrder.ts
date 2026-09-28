@@ -1,5 +1,7 @@
 import { prisma } from "../db";
 import { createAuditLog } from "../audit";
+import { recalculateAndUpdateRisk } from "./risk";
+import { evaluateAlerts } from "./alert";
 
 export async function createWorkOrder(data: {
   assetId: string;
@@ -33,7 +35,7 @@ export async function createWorkOrder(data: {
   // Update asset status to UNDER_MAINTENANCE
   await prisma.asset.update({
     where: { id: data.assetId },
-    data: { lifecycleStatus: "UNDER_MAINTENANCE" },
+    data: { lifecycleStatus: "UNDER_MAINTENANCE", operationalStatus: "DEGRADED" },
   });
 
   await prisma.lifecycleEvent.create({
@@ -46,6 +48,9 @@ export async function createWorkOrder(data: {
       description: `Work Order ${workOrderNumber} created: ${data.issue}`,
     },
   });
+
+  // Recalculate risk (work order added affects failure history score)
+  await recalculateAndUpdateRisk(data.assetId);
 
   await createAuditLog({
     entityType: "WORK_ORDER",
@@ -75,13 +80,13 @@ export async function updateWorkOrder(
 
   if (!wo) throw new Error("WORK_ORDER_NOT_FOUND");
 
-  // Validation rules
+  // Validation rules for completion
   if (data.status === "COMPLETED") {
     if (!data.completionNotes && !wo.completionNotes) {
       throw new Error("Completion notes required to complete work order");
     }
     if (data.actualCost === undefined && wo.actualCost === undefined) {
-      throw new Error("Actual cost required to complete work order");
+      throw new Error("Actual repair cost required to complete work order");
     }
   }
 
@@ -99,7 +104,7 @@ export async function updateWorkOrder(
     },
   });
 
-  // If completed, update asset status and create maintenance record
+  // If completed, update asset status, create maintenance record, recalculate risk & evaluate alerts
   if (isCompleting) {
     await prisma.maintenanceRecord.create({
       data: {
@@ -130,10 +135,14 @@ export async function updateWorkOrder(
         performedById: userId,
         oldStatus: "UNDER_MAINTENANCE",
         newStatus: "OPERATIONAL",
-        description: `Work order ${wo.workOrderNumber} completed successfully.`,
-        cost: Number(data.actualCost || 0),
+        description: `Work order ${wo.workOrderNumber} completed successfully. Repair cost: ₹${data.actualCost || wo.actualCost || 0}.`,
+        cost: Number(data.actualCost || wo.actualCost || 0),
       },
     });
+
+    // Recalculate risk & evaluate alerts
+    await recalculateAndUpdateRisk(wo.assetId);
+    await evaluateAlerts(wo.assetId);
   }
 
   await createAuditLog({
